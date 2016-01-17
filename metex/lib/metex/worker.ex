@@ -6,7 +6,7 @@ defmodule Metex.Worker do
 
     case result do
       {:ok, temp} ->
-        "#{location}: #{temp}°C"
+        "#{location}: #{temp}°F"
       :error ->
         "#{location} not found"
     end
@@ -22,14 +22,15 @@ defmodule Metex.Worker do
     body |> JSON.decode! |> compute_temperature
   end
 
-  defp parse_response(_), do: :error
+  defp parse_response(_) do
+    :error
+  end
 
-  defp compute_temperature(json) do
-    try do
-      temp = (json["main"]["temp"] - 273.15) |> Float.round(1)
-      {:ok, temp}
-    rescue
-      _ -> :error
-    end
+  defp compute_temperature(%{"main" => %{ "temp" => temp}}) do
+    {:ok, temp}
+  end
+
+  defp compute_temperature(_) do
+    :error
   end
 end
