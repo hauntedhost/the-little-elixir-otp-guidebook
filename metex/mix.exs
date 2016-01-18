@@ -14,7 +14,7 @@ defmodule Metex.Mixfile do
   #
   # Type "mix help compile.app" for more information
   def application do
-    [applications: [:logger, :httpoison]]
+    [applications: [:logger, :httpoison, :tzdata]]
   end
 
   # Dependencies can be Hex packages:
@@ -29,7 +29,8 @@ defmodule Metex.Mixfile do
   defp deps do
     [
       {:httpoison, "~> 0.8.0"},
-      {:json, "~> 0.3.0"}
+      {:json, "~> 0.3.0"},
+      {:timex, "~> 0.19.0"}
     ]
   end
 end
