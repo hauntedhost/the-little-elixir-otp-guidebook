@@ -2,6 +2,8 @@ defmodule Metex.Worker do
   use GenServer
   use Timex
 
+  @cache_minutes 5
+
   ## Client API
 
   def start_link(opts \\ []) do
@@ -23,18 +25,16 @@ defmodule Metex.Worker do
   end
 
   def handle_call({:location, location}, _from, state) when is_binary(location) do
-    if use_cache?(state[location]) do
-      IO.puts("Using cache for: #{location}")
-      response = get_in(state, [location, :response])
-      new_state = update_counter(state, location, response)
-      {:reply, response, new_state}
+    if (temp = cached_temp(state, location)) do
+      debug? && IO.puts("Using cache for: #{location}")
+      new_state = update_state(state, location, temp, touch = false)
+      {:reply, display_temp(location, temp), new_state}
     else
-      IO.puts("Fetching latest for: #{location}")
+      debug? && IO.puts("Fetching latest for: #{location}")
       case temperature_of(location) do
         {:ok, temp} ->
-          response = "#{location}: #{temp}°F"
-          new_state = update_stats(state, location, response)
-          {:reply, response, new_state}
+          new_state = update_state(state, location, temp)
+          {:reply, display_temp(location, temp), new_state}
         :error ->
           {:reply, :error, state}
       end
@@ -47,7 +47,11 @@ defmodule Metex.Worker do
 
   ## Helper Functions
 
-  def temperature_of(location) do
+  defp display_temp(location, temp) do
+    "#{location}: #{temp}°F"
+  end
+
+  defp temperature_of(location) do
     url_for(location)
     |> HTTPoison.get
     |> parse_response
@@ -75,25 +79,32 @@ defmodule Metex.Worker do
     :error
   end
 
+  defp cached_temp(state, location) do
+    use_cache?(state[location]) && get_in(state, [location, :temp])
+  end
+
   defp use_cache?(%{updated_at: updated_at}) do
-    shifted = updated_at |> Date.shift(mins: 5)
+    shifted = updated_at |> Date.shift(mins: @cache_minutes)
     Date.compare(shifted, Date.now) == 1 # shifted is still greater than now
   end
 
-  defp use_cache?(_), do: false
+  defp use_cache?(_) do
+    false
+  end
 
-  defp update_counter(state, location, response) do
-    default = %{response: response, count: 1, updated_at: Date.now}
+  defp update_state(state, location, temp, touch \\ true) do
+    default = %{temp: temp, count: 1, updated_at: Date.now}
     Map.update(state, location, default, fn(current) ->
-      %{current | count: current.count + 1}
+      %{
+        temp: temp,
+        count: current.count + 1,
+        updated_at: (touch && Date.now) || current.updated_at
+      }
     end)
   end
 
-  defp update_stats(state, location, response) do
-    default = %{response: response, count: 1, updated_at: Date.now}
-    Map.update(state, location, default, fn(current) ->
-      %{response: response, count: current.count + 1, updated_at: Date.now}
-    end)
+  defp debug? do
+    !!System.get_env("DEBUG")
   end
 end
 
