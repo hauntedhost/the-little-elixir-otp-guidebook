@@ -1,20 +1,23 @@
 # Cache
 
-**TODO: Add description**
+Simple Cache implementation using GenServer.
 
-## Installation
+```
+iex> Cache.start_link
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed as:
+iex> Cache.write(:foo, "bar")
+iex> Cache.write(:baz, "qux")
 
-  1. Add cache to your list of dependencies in `mix.exs`:
+iex> Cache.read(:foo)
+"bar"
 
-        def deps do
-          [{:cache, "~> 0.0.1"}]
-        end
+iex> Cache.exists?(:foo)
+true
+iex> Cache.delete(:foo)
+iex> Cache.exists?(:foo)
+false
 
-  2. Ensure cache is started before your application:
-
-        def application do
-          [applications: [:cache]]
-        end
-
+iex> Cache.clear
+iex> Cache.read(:baz)
+nil
+```
