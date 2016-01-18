@@ -2,20 +2,29 @@ defmodule Metex.Worker do
   use GenServer
   use Timex
 
+  @name MW
   @cache_minutes 5
 
   ## Client API
 
   def start_link(opts \\ []) do
-    GenServer.start_link(__MODULE__, :ok, opts)
+    GenServer.start_link(__MODULE__, :ok, opts ++ [name: MW])
   end
 
-  def get_temp(pid, location) do
-    GenServer.call(pid, {:location, location})
+  def stop do
+    GenServer.cast(@name, :stop)
   end
 
-  def get_state(pid) do
-    GenServer.call(pid, :get_state)
+  def get_temp(location) do
+    GenServer.call(@name, {:location, location})
+  end
+
+  def get_state do
+    GenServer.call(@name, :get_state)
+  end
+
+  def reset_state do
+    GenServer.cast(@name, :reset_state)
   end
 
   ## Server Callbacks
@@ -43,6 +52,20 @@ defmodule Metex.Worker do
 
   def handle_call(:get_state, _from, state) do
     {:reply, state, state}
+  end
+
+  def handle_cast(:reset_state, _state) do
+    {:noreply, %{}}
+  end
+
+  def handle_cast(:stop, state) do
+    {:stop, :normal, state}
+  end
+
+  def terminate(reason, state) do
+    IO.puts("Server terminated: #{inspect(reason)}")
+    IO.inspect(state)
+    :ok
   end
 
   ## Helper Functions
